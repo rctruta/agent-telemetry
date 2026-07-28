@@ -23,26 +23,50 @@ deleted from them.
 
 ---
 
-## 2. The single most important caveat
+## 2. RETRACTED: the "data loss" claim was wrong
 
-**The historical record is mostly gone, and it is not recoverable.**
+**An earlier version of this document claimed that Claude Code's 30-day
+retention had already destroyed most of 2.5 months of work. That was false.**
+It is corrected here rather than deleted, because the error is instructive.
 
-`cleanupPeriodDays` defaults to **30**, and Claude Code deletes transcripts
-older than that at startup. It ran on 2026-07-28 at 16:26 UTC — during the
-session that discovered this — and what survives is:
+**What was actually checked, 2026-07-28:**
 
-> **7 transcripts, 3 project directories, 5,641 tool calls, 1,047 human turns,
-> spanning 2026-05-10 to 2026-07-28.**
+| check | result |
+|---|---|
+| `~/.claude/projects` dir mtime | **2026-07-10** — deleting any file inside would have updated it |
+| individual project dir mtimes | 2026-07-18, 2026-07-16, 2026-06-22 — none recent |
+| oldest surviving transcript | **78 days old**, still present, against a 30-day default |
+| compaction records in the live session | **9 × `compact_boundary`, `trigger: auto`** |
 
-That covers six active repos and 2.5 months of daily work. Most of it is not
-there. Sessions for `harness-bench`, `podcast-rag`, and `ai-security-testbed`
-have no surviving transcript directory at all.
+**Cleanup ran and deleted nothing.** `~/.claude/.last-cleanup` records that the
+routine executed, not that it removed anything. The original claim read a
+timestamp and asserted a deletion from it — a derived fact stated instead of
+derived, which is the same defect class this lab has documented seven times.
 
-**Do not describe this as a longitudinal dataset.** It is a baseline of n=7
-plus whatever accrues after 2026-07-28. If the talk needs before/after
-evidence, the "before" mostly does not exist. Say so.
+**Why the transcript count looked alarming and is not.** Sessions here are
+long-lived and resumed. One file spans **2026-06-10 → 2026-07-28 — 48 days,
+80 MB, 9 auto-compactions**. Work on `harness-bench`, `podcast-rag`, and
+`ai-security-testbed` is inside it, because those edits were made from a single
+worktree `cwd`. Seven files is not seven sessions' worth of history.
 
-Retention is now 3650 days, so this stops being true going forward.
+**The mechanism, correctly stated:** retention keys on **file mtime**, and
+resuming a session resets it. The transcript whose oldest record is 2026-05-10
+has an mtime of 2026-07-23. Active sessions do not age out. Only genuinely
+abandoned sessions are at risk.
+
+### What remains true
+
+- `cleanupPeriodDays` really does default to **30**, with deletion at startup
+  (documented at `code.claude.com/docs/en/settings`, read 2026-07-28).
+- Raising it and archiving are still cheap insurance against abandoned sessions
+  and against the default changing. Both are in place.
+- **Genuine risk of loss is much lower than first claimed**, and no evidence of
+  any actual loss on this machine exists.
+
+### The real limit on this dataset
+
+Not deletion. **n=7 sessions, few and long.** Enough for a baseline, not enough
+for a result. That constraint is unchanged; only its cause was wrong.
 
 ---
 
