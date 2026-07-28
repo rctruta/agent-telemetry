@@ -1,0 +1,44 @@
+#!/bin/bash
+# Refuse to commit session data or credentials.
+#
+# .gitignore is a default, not a gate: `git add -f` overrides it and so does a
+# mistaken `git add -A` after an ignore rule is edited. This blocks the commit.
+#
+# What is being protected: session transcripts contain the full text of every
+# message in every session -- personal circumstances, private context,
+# everything typed. A scan on 2026-07-28 also matched credential-shaped strings
+# in 2 of 7 transcript files. Neither belongs in any repo, public or private.
+set -uo pipefail
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+# 1. Data files by extension, wherever they are.
+bad=$(printf '%s\n' "$staged" | grep -E '\.(jsonl|parquet|db|pb|sqlite3?)$' || true)
+if [ -n "$bad" ]; then
+  echo "REFUSING COMMIT: session/data files staged:" >&2
+  printf '  %s\n' $bad >&2
+  echo "These may contain full conversation text. Never commit them." >&2
+  exit 1
+fi
+
+# 2. Anything under an archive path.
+bad=$(printf '%s\n' "$staged" | grep -E '(^|/)(raw|events|antigravity)/' || true)
+if [ -n "$bad" ]; then
+  echo "REFUSING COMMIT: archive paths staged:" >&2
+  printf '  %s\n' $bad >&2
+  exit 1
+fi
+
+# 3. Credential shapes in staged CONTENT. Compare against the staged blob, not
+#    the working tree. Documentation that merely names these patterns is
+#    expected -- the check requires a plausible secret BODY after the prefix,
+#    so prose like "a scan for `sk-ant`, `ghp_`" does not trip it.
+for f in $staged; do
+  git show ":$f" 2>/dev/null | grep -qE '(sk-ant-[A-Za-z0-9_-]{20}|ghp_[A-Za-z0-9]{30}|gho_[A-Za-z0-9]{30}|AKIA[A-Z0-9]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)' && {
+    echo "REFUSING COMMIT: credential-shaped string in $f" >&2
+    exit 1
+  }
+done
+
+exit 0
