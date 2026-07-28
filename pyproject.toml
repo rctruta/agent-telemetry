@@ -1,0 +1,13 @@
+[project]
+name = "agent-telemetry"
+version = "0.1.0"
+description = "Process metrics for coding-agent sessions, derived from Claude Code transcripts. No grader required."
+requires-python = ">=3.11"
+dependencies = ["pandas>=2.0", "pyarrow>=15.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
